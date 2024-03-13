@@ -22,19 +22,18 @@ like this:
 
 `
 
-    recyclerView.adapter = ConcatAdapter(ConcatAdapter.Config.Builder().setIsolateViewTypes(false).build()).apply {
-        addAdapter(BindingAdapter().apply {
-            addType<String>(R.layout.common_dialog_normal)
-            models = arrayListOf("","","")
+    recyclerView.adapter = ConcatAdapter().apply {
+        addAdapter(adapterA)
+        addAdapter(ConcatAdapter().apply {
+            addAdapter(adapterAA)
+            addAdapter(ConcatAdapter().apply {
+               addAdapter(adapterAAA)
+               addAdapter(adapterBBB)
+               addAdapter(adapterCCC)
+            })
+            addAdapter(adapterBB)
         })
-        addAdapter(ConcatAdapter(ConcatAdapter.Config.Builder().setIsolateViewTypes(false).build()).apply {
-            addAdapter(matchAdapter)
-            addAdapter(loadStateAdapter)
-        })
-        addAdapter(BindingAdapter().apply {
-            addType<String>(R.layout.coupon_type_item)
-            models = arrayListOf("","","","","")
-        })
+        addAdapter(adapterB)
     }
 `
 
