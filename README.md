@@ -16,3 +16,24 @@ Please call setStickyHeaderProvider：
     });
 `
 
+What is ConcatAdapter nested ConcatAdapter? 
+
+like this:
+
+`
+    adapter = ConcatAdapter(ConcatAdapter.Config.Builder().setIsolateViewTypes(false).build()).apply {
+        addAdapter(BindingAdapter().apply {
+            addType<String>(R.layout.common_dialog_normal)
+            models = arrayListOf("","","")
+        })
+        addAdapter(ConcatAdapter(ConcatAdapter.Config.Builder().setIsolateViewTypes(false).build()).apply {
+            addAdapter(matchAdapter)
+            addAdapter(loadStateAdapter)
+        })
+        addAdapter(BindingAdapter().apply {
+            addType<String>(R.layout.coupon_type_item)
+            models = arrayListOf("","","","","")
+        })
+    }
+`
+
