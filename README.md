@@ -1,4 +1,6 @@
+
 1.Support use in ConcatAdapter and ConcatAdapter nested ConcatAdapter
+
 2.Fixed findLastVisiablexxx method
 
 Please call setStickyHeaderProvider：
