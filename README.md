@@ -6,8 +6,8 @@
 Please call setStickyHeaderProvider：
 
 `
+
     stickyHeadersLinearLayoutManager.setStickyHeaderProvider(new StickyHeaderProvider() {
-    
         @Override
         public boolean isStickyHeader(RecyclerView.Adapter<?> adapter, int position) {
             //use brv example
@@ -21,8 +21,8 @@ What is ConcatAdapter nested ConcatAdapter?
 like this:
 
 `
+
     adapter = ConcatAdapter(ConcatAdapter.Config.Builder().setIsolateViewTypes(false).build()).apply {
-    
         addAdapter(BindingAdapter().apply {
             addType<String>(R.layout.common_dialog_normal)
             models = arrayListOf("","","")
