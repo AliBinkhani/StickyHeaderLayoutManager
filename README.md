@@ -22,6 +22,7 @@ like this:
 
 `
     adapter = ConcatAdapter(ConcatAdapter.Config.Builder().setIsolateViewTypes(false).build()).apply {
+    
         addAdapter(BindingAdapter().apply {
             addType<String>(R.layout.common_dialog_normal)
             models = arrayListOf("","","")
