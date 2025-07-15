@@ -18,25 +18,21 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
 ) : OpenLinearLayoutManager(context, orientation, reverseLayout) {
     private var mAdapter: RecyclerView.Adapter<*>? = null
 
-    private var mTranslationX = 0f
-    private var mTranslationY = 0f
+    private var translationX = 0f
+    private var translationY = 0f
 
     // Header positions for the currently displayed list and their observer.
-    private val mHeaderPositions: MutableList<Int?> = ArrayList(0)
-    private val mHeaderPositionsObserver: AdapterDataObserver = HeaderPositionsAdapterDataObserver()
+    private val headerPositions: MutableList<Int?> = ArrayList(0)
+    private val headerPositionsObserver: AdapterDataObserver = HeaderPositionsAdapterDataObserver()
 
     // Sticky header's ViewHolder and dirty state.
     private var mStickyHeader: View? = null
     private var mStickyHeaderPosition = RecyclerView.NO_POSITION
 
-    private var mPendingScrollPosition = RecyclerView.NO_POSITION
-    private var mPendingScrollOffset = 0
+    private var pendingScrollPosition = RecyclerView.NO_POSITION
+    private var pendingScrollOffset = 0
 
-    private var scrollEnabled = true
-
-    fun setScrollEnabled(enabled: Boolean) {
-        scrollEnabled = enabled
-    }
+    var scrollEnabled = true
 
     override fun canScrollHorizontally(): Boolean {
         return super.canScrollHorizontally() && scrollEnabled
@@ -56,7 +52,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
      * Offsets the vertical location of the sticky header relative to the its default position.
      */
     fun setStickyHeaderTranslationY(translationY: Float) {
-        mTranslationY = translationY
+        this.translationY = translationY
         requestLayout()
     }
 
@@ -64,7 +60,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
      * Offsets the horizontal location of the sticky header relative to the its default position.
      */
     fun setStickyHeaderTranslationX(translationX: Float) {
-        mTranslationX = translationX
+        this.translationX = translationX
         requestLayout()
     }
 
@@ -86,29 +82,27 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     }
 
     private fun setAdapter(adapter: RecyclerView.Adapter<*>?) {
-        if (mAdapter != null) {
-            mAdapter!!.unregisterAdapterDataObserver(mHeaderPositionsObserver)
-        }
+        mAdapter?.unregisterAdapterDataObserver(headerPositionsObserver)
 
         mAdapter = adapter
-        mAdapter!!.registerAdapterDataObserver(mHeaderPositionsObserver)
-        mHeaderPositionsObserver.onChanged()
+        mAdapter?.registerAdapterDataObserver(headerPositionsObserver)
+        headerPositionsObserver.onChanged()
     }
 
     override fun onSaveInstanceState(): Parcelable? {
         return super.onSaveInstanceState()?.let {
             LayoutManagerSavedState(
                 superState = it,
-                scrollPosition = mPendingScrollPosition,
-                scrollOffset = mPendingScrollOffset
+                scrollPosition = pendingScrollPosition,
+                scrollOffset = pendingScrollOffset
             )
         }
     }
 
     override fun onRestoreInstanceState(state: Parcelable) {
         state as LayoutManagerSavedState
-        mPendingScrollPosition = state.scrollPosition
-        mPendingScrollOffset = state.scrollOffset
+        pendingScrollPosition = state.scrollPosition
+        pendingScrollOffset = state.scrollOffset
         super.onRestoreInstanceState(state.superState)
     }
 
@@ -326,7 +320,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
      * Updates the sticky header state (creation, binding, display), to be called whenever there's a layout or scroll
      */
     private fun updateStickyHeader(recycler: RecyclerView.Recycler, layout: Boolean) {
-        val headerCount = mHeaderPositions.size
+        val headerCount = headerPositions.size
         val childCount = getChildCount()
         if (headerCount > 0 && childCount > 0) {
             // Find first valid child.
@@ -345,8 +339,8 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
             }
             if (anchorView != null && anchorPos != -1) {
                 val headerIndex = findHeaderIndexOrBefore(anchorPos)
-                val headerPos = (if (headerIndex != -1) mHeaderPositions[headerIndex] else -1)!!
-                val nextHeaderPos = (if (headerCount > headerIndex + 1) mHeaderPositions[headerIndex + 1] else -1)!!
+                val headerPos = (if (headerIndex != -1) headerPositions[headerIndex] else -1)!!
+                val nextHeaderPos = (if (headerCount > headerIndex + 1) headerPositions[headerIndex + 1] else -1)!!
 
                 // Show sticky header if:
                 // - There's one to show;
@@ -357,7 +351,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
                 ) {
                     // Ensure existing sticky header, if any, is of correct type.
                     if (mStickyHeader != null
-                        && getItemViewType(mStickyHeader!!) != mAdapter!!.getItemViewType(headerPos)
+                        && getItemViewType(mStickyHeader!!) != mAdapter?.getItemViewType(headerPos)
                     ) {
                         // A sticky header was shown before but is not of the correct type. Scrap it.
                         scrapStickyHeader(recycler)
@@ -402,9 +396,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
 
         // Setup sticky header if the adapter requires it.
         val adapterPositionPair = mAdapter?.offsetPositionOnAdapter(position)
-        if (adapterPositionPair?.first is OnViewStickyListener) {
-            (adapterPositionPair.first as OnViewStickyListener).setupStickyHeaderView(stickyHeader)
-        }
+        (adapterPositionPair?.first as? OnViewStickyListener?)?.setupStickyHeaderView(stickyHeader)
 
         // Add sticky header as a child view, to be detached / reattached whenever LinearLayoutManager#fill() is called,
         // which happens on layout and scroll (see overrides).
@@ -428,14 +420,14 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
         measureAndLayout(mStickyHeader!!)
 
         // If we have a pending scroll wait until the end of layout and scroll again.
-        if (mPendingScrollPosition != RecyclerView.NO_POSITION) {
+        if (pendingScrollPosition != RecyclerView.NO_POSITION) {
             val vto = mStickyHeader!!.viewTreeObserver
             vto.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
                 override fun onGlobalLayout() {
                     vto.removeOnGlobalLayoutListener(this)
 
-                    if (mPendingScrollPosition != RecyclerView.NO_POSITION) {
-                        scrollToPositionWithOffset(mPendingScrollPosition, mPendingScrollOffset)
+                    if (pendingScrollPosition != RecyclerView.NO_POSITION) {
+                        scrollToPositionWithOffset(pendingScrollPosition, pendingScrollOffset)
                         setPendingScroll(RecyclerView.NO_POSITION, INVALID_OFFSET)
                     }
                 }
@@ -472,10 +464,8 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
         stickyHeader.translationY = 0f
 
         // Teardown holder if the adapter requires it.
-        val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(stickyHeaderPosition)
-        if (adapterPositionPair.first is OnViewStickyListener) {
-            (adapterPositionPair.first as OnViewStickyListener).teardownStickyHeaderView(stickyHeader)
-        }
+        val adapterPositionPair = mAdapter?.offsetPositionOnAdapter(stickyHeaderPosition)
+        (adapterPositionPair?.first as? OnViewStickyListener?)?.teardownStickyHeaderView(stickyHeader)
 
         // Stop ignoring sticky header so that it can be recycled.
         stopIgnoringView(stickyHeader)
@@ -492,15 +482,15 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
         if (!params.isItemRemoved && !params.isViewInvalid) {
             return if (orientation == VERTICAL) {
                 if (reverseLayout) {
-                    view.top + view.translationY <= height + mTranslationY
+                    view.top + view.translationY <= height + translationY
                 } else {
-                    view.bottom - view.translationY >= mTranslationY
+                    view.bottom - view.translationY >= translationY
                 }
             } else {
                 if (reverseLayout) {
-                    view.left + view.translationX <= width + mTranslationX
+                    view.left + view.translationX <= width + translationX
                 } else {
-                    view.right - view.translationX >= mTranslationX
+                    view.right - view.translationX >= translationX
                 }
             }
         } else {
@@ -514,15 +504,15 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     private fun isViewOnBoundary(view: View): Boolean {
         return if (orientation == VERTICAL) {
             if (reverseLayout) {
-                view.bottom - view.translationY > height + mTranslationY
+                view.bottom - view.translationY > height + translationY
             } else {
-                view.top + view.translationY < mTranslationY
+                view.top + view.translationY < translationY
             }
         } else {
             if (reverseLayout) {
-                view.right - view.translationX > width + mTranslationX
+                view.right - view.translationX > width + translationX
             } else {
-                view.left + view.translationX < mTranslationX
+                view.left + view.translationX < translationX
             }
         }
     }
@@ -533,7 +523,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
      */
     private fun getY(headerView: View, nextHeaderView: View?): Float {
         if (orientation == VERTICAL) {
-            var y = mTranslationY
+            var y = translationY
             if (reverseLayout) {
                 y += (height - headerView.height).toFloat()
             }
@@ -546,7 +536,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
             }
             return y
         } else {
-            return mTranslationY
+            return translationY
         }
     }
 
@@ -556,7 +546,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
      */
     private fun getX(headerView: View, nextHeaderView: View?): Float {
         if (orientation != VERTICAL) {
-            var x = mTranslationX
+            var x = translationX
             if (reverseLayout) {
                 x += (width - headerView.width).toFloat()
             }
@@ -569,7 +559,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
             }
             return x
         } else {
-            return mTranslationX
+            return translationX
         }
     }
 
@@ -578,12 +568,12 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
      */
     private fun findHeaderIndex(position: Int): Int {
         var low = 0
-        var high = mHeaderPositions.size - 1
+        var high = headerPositions.size - 1
         while (low <= high) {
             val middle = (low + high) / 2
-            if (mHeaderPositions[middle]!! > position) {
+            if (headerPositions[middle]!! > position) {
                 high = middle - 1
-            } else if (mHeaderPositions[middle]!! < position) {
+            } else if (headerPositions[middle]!! < position) {
                 low = middle + 1
             } else {
                 return middle
@@ -597,12 +587,12 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
      */
     private fun findHeaderIndexOrBefore(position: Int): Int {
         var low = 0
-        var high = mHeaderPositions.size - 1
+        var high = headerPositions.size - 1
         while (low <= high) {
             val middle = (low + high) / 2
-            if (mHeaderPositions[middle]!! > position) {
+            if (headerPositions[middle]!! > position) {
                 high = middle - 1
-            } else if (middle < mHeaderPositions.size - 1 && mHeaderPositions[middle + 1]!! <= position) {
+            } else if (middle < headerPositions.size - 1 && headerPositions[middle + 1]!! <= position) {
                 low = middle + 1
             } else {
                 return middle
@@ -616,12 +606,12 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
      */
     private fun findHeaderIndexOrNext(position: Int): Int {
         var low = 0
-        var high = mHeaderPositions.size - 1
+        var high = headerPositions.size - 1
         while (low <= high) {
             val middle = (low + high) / 2
-            if (middle > 0 && mHeaderPositions[middle - 1]!! >= position) {
+            if (middle > 0 && headerPositions[middle - 1]!! >= position) {
                 high = middle - 1
-            } else if (mHeaderPositions[middle]!! < position) {
+            } else if (headerPositions[middle]!! < position) {
                 low = middle + 1
             } else {
                 return middle
@@ -631,8 +621,8 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     }
 
     private fun setPendingScroll(position: Int, offset: Int) {
-        mPendingScrollPosition = position
-        mPendingScrollOffset = offset
+        pendingScrollPosition = position
+        pendingScrollOffset = offset
     }
 
     /**
@@ -644,28 +634,28 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     private inner class HeaderPositionsAdapterDataObserver : AdapterDataObserver() {
         override fun onChanged() {
             // There's no hint at what changed, so go through the adapter.
-            mHeaderPositions.clear()
-            val itemCount = mAdapter!!.itemCount
+            headerPositions.clear()
+            val itemCount = mAdapter?.itemCount ?: 0
             for (i in 0..<itemCount) {
                 val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(i)
                 if (stickyHeaderProvider!!.isStickyHeader(adapterPositionPair.first, adapterPositionPair.second!!)) {
-                    mHeaderPositions.add(i)
+                    headerPositions.add(i)
                 }
             }
 
             // Remove sticky header immediately if the entry it represents has been removed. A layout will follow.
-            if (mStickyHeader != null && !mHeaderPositions.contains(mStickyHeaderPosition)) {
+            if (mStickyHeader != null && !headerPositions.contains(mStickyHeaderPosition)) {
                 scrapStickyHeader(null)
             }
         }
 
         override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
             // Shift headers below down.
-            val headerCount = mHeaderPositions.size
+            val headerCount = headerPositions.size
             if (headerCount > 0) {
                 var i = findHeaderIndexOrNext(positionStart)
                 while (i != -1 && i < headerCount) {
-                    mHeaderPositions[i] = mHeaderPositions[i]!! + itemCount
+                    headerPositions[i] = headerPositions[i]!! + itemCount
                     i++
                 }
             }
@@ -676,35 +666,35 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
                 if (stickyHeaderProvider!!.isStickyHeader(adapterPositionPair.first, adapterPositionPair.second!!)) {
                     val headerIndex = findHeaderIndexOrNext(i)
                     if (headerIndex != -1) {
-                        mHeaderPositions.add(headerIndex, i)
+                        headerPositions.add(headerIndex, i)
                     } else {
-                        mHeaderPositions.add(i)
+                        headerPositions.add(i)
                     }
                 }
             }
         }
 
         override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-            var headerCount = mHeaderPositions.size
+            var headerCount = headerPositions.size
             if (headerCount > 0) {
                 // Remove headers.
                 for (i in positionStart + itemCount - 1 downTo positionStart) {
                     val index = findHeaderIndex(i)
                     if (index != -1) {
-                        mHeaderPositions.removeAt(index)
+                        headerPositions.removeAt(index)
                         headerCount--
                     }
                 }
 
                 // Remove sticky header immediately if the entry it represents has been removed. A layout will follow.
-                if (mStickyHeader != null && !mHeaderPositions.contains(mStickyHeaderPosition)) {
+                if (mStickyHeader != null && !headerPositions.contains(mStickyHeaderPosition)) {
                     scrapStickyHeader(null)
                 }
 
                 // Shift headers below up.
                 var i = findHeaderIndexOrNext(positionStart + itemCount)
                 while (i != -1 && i < headerCount) {
-                    mHeaderPositions[i] = mHeaderPositions[i]!! - itemCount
+                    headerPositions[i] = headerPositions[i]!! - itemCount
                     i++
                 }
             }
@@ -713,17 +703,17 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
         override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
             // Shift moved headers by toPosition - fromPosition.
             // Shift headers in-between by -itemCount (reverse if upwards).
-            val headerCount = mHeaderPositions.size
+            val headerCount = headerPositions.size
             if (headerCount > 0) {
                 if (fromPosition < toPosition) {
                     var i = findHeaderIndexOrNext(fromPosition)
                     while (i != -1 && i < headerCount) {
-                        val headerPos = mHeaderPositions[i]!!
+                        val headerPos = headerPositions[i]!!
                         if (headerPos >= fromPosition && headerPos < fromPosition + itemCount) {
-                            mHeaderPositions[i] = headerPos - (toPosition - fromPosition)
+                            headerPositions[i] = headerPos - (toPosition - fromPosition)
                             sortHeaderAtIndex(i)
                         } else if (headerPos >= fromPosition + itemCount && headerPos <= toPosition) {
-                            mHeaderPositions[i] = headerPos - itemCount
+                            headerPositions[i] = headerPos - itemCount
                             sortHeaderAtIndex(i)
                         } else {
                             break
@@ -733,12 +723,12 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
                 } else {
                     var i = findHeaderIndexOrNext(toPosition)
                     while (i != -1 && i < headerCount) {
-                        val headerPos = mHeaderPositions[i]!!
+                        val headerPos = headerPositions[i]!!
                         if (headerPos >= fromPosition && headerPos < fromPosition + itemCount) {
-                            mHeaderPositions[i] = headerPos + (toPosition - fromPosition)
+                            headerPositions[i] = headerPos + (toPosition - fromPosition)
                             sortHeaderAtIndex(i)
                         } else if (headerPos >= toPosition && headerPos <= fromPosition) {
-                            mHeaderPositions[i] = headerPos + itemCount
+                            headerPositions[i] = headerPos + itemCount
                             sortHeaderAtIndex(i)
                         } else {
                             break
@@ -750,12 +740,12 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
         }
 
         fun sortHeaderAtIndex(index: Int) {
-            val headerPos = mHeaderPositions.removeAt(index)!!
+            val headerPos = headerPositions.removeAt(index)!!
             val headerIndex = findHeaderIndexOrNext(headerPos)
             if (headerIndex != -1) {
-                mHeaderPositions.add(headerIndex, headerPos)
+                headerPositions.add(headerIndex, headerPos)
             } else {
-                mHeaderPositions.add(headerPos)
+                headerPositions.add(headerPos)
             }
         }
     }
