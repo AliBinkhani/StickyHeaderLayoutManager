@@ -14,5 +14,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "StickyFor"
-include ':app'
-include ':StickyLayoutManager'
+include(":app")
+include(":StickyLayoutManager")
