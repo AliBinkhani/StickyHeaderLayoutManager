@@ -1,25 +1,31 @@
-package androidx.recyclerview.widget;
+package androidx.recyclerview.widget
 
-import android.content.Context;
-import android.util.AttributeSet;
-import android.view.View;
+import android.content.Context
+import android.util.AttributeSet
+import android.view.View
 
-public class OpenLinearLayoutManager extends LinearLayoutManager{
+open class OpenLinearLayoutManager : LinearLayoutManager {
+    constructor(context: Context?) : super(context)
 
-    public OpenLinearLayoutManager(Context context) {
-        super(context);
-    }
+    constructor(context: Context?, orientation: Int, reverseLayout: Boolean) : super(
+        context,
+        orientation,
+        reverseLayout
+    )
 
-    public OpenLinearLayoutManager(Context context, int orientation, boolean reverseLayout) {
-        super(context, orientation, reverseLayout);
-    }
+    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int) : super(
+        context,
+        attrs,
+        defStyleAttr,
+        defStyleRes
+    )
 
-    public OpenLinearLayoutManager(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        super(context, attrs, defStyleAttr, defStyleRes);
-    }
-
-    @Override
-    public View findOneVisibleChild(int fromIndex, int toIndex, boolean completelyVisible, boolean acceptPartiallyVisible) {
-        return super.findOneVisibleChild(fromIndex, toIndex, completelyVisible, acceptPartiallyVisible);
+    public override fun findOneVisibleChild(
+        fromIndex: Int,
+        toIndex: Int,
+        completelyVisible: Boolean,
+        acceptPartiallyVisible: Boolean
+    ): View? {
+        return super.findOneVisibleChild(fromIndex, toIndex, completelyVisible, acceptPartiallyVisible)
     }
 }
