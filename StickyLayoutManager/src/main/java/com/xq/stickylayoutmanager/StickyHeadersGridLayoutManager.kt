@@ -9,7 +9,6 @@ import android.view.ViewTreeObserver
 import androidx.recyclerview.widget.OpenGridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.AdapterDataObserver
-import kotlinx.parcelize.Parcelize
 import kotlin.math.max
 import kotlin.math.min
 
@@ -110,7 +109,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
 
     override fun onSaveInstanceState(): Parcelable? {
         return super.onSaveInstanceState()?.let {
-            SavedState(
+            LayoutManagerSavedState(
                 superState = it,
                 scrollPosition = mPendingScrollPosition,
                 scrollOffset = mPendingScrollOffset
@@ -119,11 +118,10 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
     }
 
     override fun onRestoreInstanceState(state: Parcelable) {
-        (state as SavedState).let {
-            mPendingScrollPosition = it.scrollPosition
-            mPendingScrollOffset = it.scrollOffset
-            super.onRestoreInstanceState(it.superState)
-        }
+        state as LayoutManagerSavedState
+        mPendingScrollPosition = state.scrollPosition
+        mPendingScrollOffset = state.scrollOffset
+        super.onRestoreInstanceState(state.superState)
     }
 
     override fun scrollVerticallyBy(dy: Int, recycler: RecyclerView.Recycler, state: RecyclerView.State?): Int {
@@ -415,7 +413,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         val stickyHeader = recycler.getViewForPosition(position)
 
         // Setup sticky header if the adapter requires it.
-        val adapterPositionPair = ConcatAdapterUtils.offsetPositionOnAdapter(mAdapter, position)
+        val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(position)
         if (adapterPositionPair.first is OnViewStickyListener) {
             (adapterPositionPair.first as OnViewStickyListener).setupStickyHeaderView(stickyHeader)
         }
@@ -486,7 +484,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         stickyHeader.translationY = 0f
 
         // Teardown holder if the adapter requires it.
-        val adapterPositionPair = ConcatAdapterUtils.offsetPositionOnAdapter(mAdapter, stickyHeaderPosition)
+        val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(stickyHeaderPosition)
         if (adapterPositionPair.first is OnViewStickyListener) {
             (adapterPositionPair.first as OnViewStickyListener).teardownStickyHeaderView(stickyHeader)
         }
@@ -659,9 +657,9 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         override fun onChanged() {
             // There's no hint at what changed, so go through the adapter.
             mHeaderPositions.clear()
-            val itemCount = mAdapter!!.getItemCount()
+            val itemCount = mAdapter!!.itemCount
             for (i in 0..<itemCount) {
-                val adapterPositionPair = ConcatAdapterUtils.offsetPositionOnAdapter(mAdapter, i)
+                val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(i)
                 if (stickyHeaderProvider!!.isStickyHeader(adapterPositionPair.first, adapterPositionPair.second!!)) {
                     mHeaderPositions.add(i)
                 }
@@ -686,7 +684,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
 
             // Add new headers.
             for (i in positionStart..<positionStart + itemCount) {
-                val adapterPositionPair = ConcatAdapterUtils.offsetPositionOnAdapter(mAdapter, i)
+                val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(i)
                 if (stickyHeaderProvider!!.isStickyHeader(adapterPositionPair.first, adapterPositionPair.second!!)) {
                     val headerIndex = findHeaderIndexOrNext(i)
                     if (headerIndex != -1) {
@@ -773,15 +771,4 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
             }
         }
     }
-
-    /**
-     * Save / restore existing [RecyclerView] state and
-     * scrolling position and offset.
-     */
-    @Parcelize
-    data class SavedState(
-        val superState: Parcelable,
-        val scrollPosition: Int,
-        val scrollOffset: Int
-    ) : Parcelable
 }
