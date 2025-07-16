@@ -3,7 +3,6 @@ package com.xq.stickylayoutmanager
 import android.content.Context
 import android.graphics.PointF
 import android.os.Parcelable
-import android.util.AttributeSet
 import android.view.View
 import android.view.ViewTreeObserver
 import androidx.recyclerview.widget.OpenGridLayoutManager
@@ -12,43 +11,49 @@ import androidx.recyclerview.widget.RecyclerView.AdapterDataObserver
 import kotlin.math.max
 import kotlin.math.min
 
-class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
-    private var mAdapter: RecyclerView.Adapter<*>? = null
+class StickyHeadersGridLayoutManager @JvmOverloads constructor(
+    context: Context,
+    spanCount: Int,
+    orientation: Int = RecyclerView.VERTICAL,
+    reverseLayout: Boolean = false,
+) : OpenGridLayoutManager(
+    context,
+    spanCount,
+    orientation,
+    reverseLayout
+) {
+    private var adapter: RecyclerView.Adapter<*>? = null
 
-    private var mTranslationX = 0f
-    private var mTranslationY = 0f
+    var translationX = 0f
+        /**
+         * Offsets the horizontal location of the sticky header relative to the its default position.
+         */
+        set(value) {
+            field = value
+            requestLayout()
+        }
+
+    var translationY = 0f
+        /**
+         * Offsets the vertical location of the sticky header relative to the its default position.
+         */
+        set(value) {
+            field = value
+            requestLayout()
+        }
 
     // Header positions for the currently displayed list and their observer.
-    private val mHeaderPositions: MutableList<Int?> = ArrayList(0)
-    private val mHeaderPositionsObserver: AdapterDataObserver = HeaderPositionsAdapterDataObserver()
+    private val headerPositions: MutableList<Int> = ArrayList(0)
+    private val headerPositionsObserver: AdapterDataObserver = HeaderPositionsAdapterDataObserver()
 
     // Sticky header's ViewHolder and dirty state.
-    private var mStickyHeader: View? = null
-    private var mStickyHeaderPosition = RecyclerView.NO_POSITION
+    private var currentStickyHeader: View? = null
+    private var currentStickyHeaderPosition = RecyclerView.NO_POSITION
 
-    private var mPendingScrollPosition = RecyclerView.NO_POSITION
-    private var mPendingScrollOffset = 0
+    private var pendingScrollPosition = RecyclerView.NO_POSITION
+    private var pendingScrollOffset = 0
 
-    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int) : super(
-        context,
-        attrs,
-        defStyleAttr,
-        defStyleRes
-    )
-
-    constructor(context: Context?, spanCount: Int) : super(context, spanCount)
-
-    constructor(context: Context?, spanCount: Int, orientation: Int, reverseLayout: Boolean) : super(
-        context,
-        spanCount,
-        orientation,
-        reverseLayout
-    )
-
-    private var scrollEnabled = true
-    fun setScrollEnabled(enabled: Boolean) {
-        scrollEnabled = enabled
-    }
+    var scrollEnabled = true
 
     override fun canScrollHorizontally(): Boolean {
         return super.canScrollHorizontally() && scrollEnabled
@@ -58,33 +63,13 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         return super.canScrollVertically() && scrollEnabled
     }
 
-    private var stickyHeaderProvider: StickyHeaderProvider? = null
-
-    fun setStickyHeaderProvider(stickyHeaderProvider: StickyHeaderProvider) {
-        this.stickyHeaderProvider = stickyHeaderProvider
-    }
-
-    /**
-     * Offsets the vertical location of the sticky header relative to the its default position.
-     */
-    fun setStickyHeaderTranslationY(translationY: Float) {
-        mTranslationY = translationY
-        requestLayout()
-    }
-
-    /**
-     * Offsets the horizontal location of the sticky header relative to the its default position.
-     */
-    fun setStickyHeaderTranslationX(translationX: Float) {
-        mTranslationX = translationX
-        requestLayout()
-    }
+    var stickyHeaderProvider: StickyHeaderProvider? = null
 
     /**
      * Returns true if `view` is the current sticky header.
      */
     fun isStickyHeader(view: View?): Boolean {
-        return view === mStickyHeader
+        return view === currentStickyHeader
     }
 
     override fun onAttachedToWindow(view: RecyclerView) {
@@ -98,29 +83,26 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
     }
 
     private fun setAdapter(adapter: RecyclerView.Adapter<*>?) {
-        if (mAdapter != null) {
-            mAdapter!!.unregisterAdapterDataObserver(mHeaderPositionsObserver)
-        }
-
-        mAdapter = adapter
-        mAdapter!!.registerAdapterDataObserver(mHeaderPositionsObserver)
-        mHeaderPositionsObserver.onChanged()
+        this.adapter?.unregisterAdapterDataObserver(headerPositionsObserver)
+        this.adapter = adapter
+        this.adapter?.registerAdapterDataObserver(headerPositionsObserver)
+        headerPositionsObserver.onChanged()
     }
 
     override fun onSaveInstanceState(): Parcelable? {
         return super.onSaveInstanceState()?.let {
             LayoutManagerSavedState(
                 superState = it,
-                scrollPosition = mPendingScrollPosition,
-                scrollOffset = mPendingScrollOffset
+                scrollPosition = pendingScrollPosition,
+                scrollOffset = pendingScrollOffset
             )
         }
     }
 
     override fun onRestoreInstanceState(state: Parcelable) {
         state as LayoutManagerSavedState
-        mPendingScrollPosition = state.scrollPosition
-        mPendingScrollOffset = state.scrollOffset
+        pendingScrollPosition = state.scrollPosition
+        pendingScrollOffset = state.scrollOffset
         super.onRestoreInstanceState(state.superState)
     }
 
@@ -190,8 +172,8 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         }
 
         // Current sticky header is the same as at the position. Adjust the scroll offset and reset pending scroll.
-        if (mStickyHeader != null && headerIndex == findHeaderIndex(mStickyHeaderPosition)) {
-            val adjustedOffset = (if (offset != INVALID_OFFSET) offset else 0) + mStickyHeader!!.height
+        if (currentStickyHeader != null && headerIndex == findHeaderIndex(currentStickyHeaderPosition)) {
+            val adjustedOffset = (if (offset != INVALID_OFFSET) offset else 0) + currentStickyHeader!!.height
             super.scrollToPositionWithOffset(position, adjustedOffset)
             return
         }
@@ -314,7 +296,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         focused: View,
         direction: Int,
         recycler: RecyclerView.Recycler,
-        state: RecyclerView.State
+        state: RecyclerView.State,
     ): View? {
         detachStickyHeader()
         val view = super.onFocusSearchFailed(focused, direction, recycler, state)
@@ -323,14 +305,14 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
     }
 
     private fun detachStickyHeader() {
-        if (mStickyHeader != null) {
-            detachView(mStickyHeader!!)
+        if (currentStickyHeader != null) {
+            detachView(currentStickyHeader!!)
         }
     }
 
     private fun attachStickyHeader() {
-        if (mStickyHeader != null) {
-            attachView(mStickyHeader!!)
+        if (currentStickyHeader != null) {
+            attachView(currentStickyHeader!!)
         }
     }
 
@@ -338,7 +320,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
      * Updates the sticky header state (creation, binding, display), to be called whenever there's a layout or scroll
      */
     private fun updateStickyHeader(recycler: RecyclerView.Recycler, layout: Boolean) {
-        val headerCount = mHeaderPositions.size
+        val headerCount = headerPositions.size
         val childCount = getChildCount()
         if (headerCount > 0 && childCount > 0) {
             // Find first valid child.
@@ -357,8 +339,8 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
             }
             if (anchorView != null && anchorPos != -1) {
                 val headerIndex = findHeaderIndexOrBefore(anchorPos)
-                val headerPos = (if (headerIndex != -1) mHeaderPositions[headerIndex] else -1)!!
-                val nextHeaderPos = (if (headerCount > headerIndex + 1) mHeaderPositions[headerIndex + 1] else -1)!!
+                val headerPos = (if (headerIndex != -1) headerPositions[headerIndex] else -1)
+                val nextHeaderPos = (if (headerCount > headerIndex + 1) headerPositions[headerIndex + 1] else -1)
 
                 // Show sticky header if:
                 // - There's one to show;
@@ -368,18 +350,18 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
                     && nextHeaderPos != headerPos + 1
                 ) {
                     // Ensure existing sticky header, if any, is of correct type.
-                    if (mStickyHeader != null
-                        && getItemViewType(mStickyHeader!!) != mAdapter!!.getItemViewType(headerPos)
+                    if (currentStickyHeader != null
+                        && getItemViewType(currentStickyHeader!!) != adapter!!.getItemViewType(headerPos)
                     ) {
                         // A sticky header was shown before but is not of the correct type. Scrap it.
                         scrapStickyHeader(recycler)
                     }
 
                     // Ensure sticky header is created, if absent, or bound, if being laid out or the position changed.
-                    if (mStickyHeader == null) {
+                    if (currentStickyHeader == null) {
                         createStickyHeader(recycler, headerPos)
                     }
-                    if (layout || getPosition(mStickyHeader!!) != headerPos) {
+                    if (layout || getPosition(currentStickyHeader!!) != headerPos) {
                         bindStickyHeader(recycler, headerPos)
                     }
 
@@ -389,18 +371,18 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
                     if (nextHeaderPos != -1) {
                         nextHeaderView = getChildAt(anchorIndex + (nextHeaderPos - anchorPos))
                         // The header view itself is added to the RecyclerView. Discard it if it comes up.
-                        if (nextHeaderView === mStickyHeader) {
+                        if (nextHeaderView === currentStickyHeader) {
                             nextHeaderView = null
                         }
                     }
-                    mStickyHeader!!.translationX = getX(mStickyHeader!!, nextHeaderView)
-                    mStickyHeader!!.translationY = getY(mStickyHeader!!, nextHeaderView)
+                    currentStickyHeader!!.translationX = getX(currentStickyHeader!!, nextHeaderView)
+                    currentStickyHeader!!.translationY = getY(currentStickyHeader!!, nextHeaderView)
                     return
                 }
             }
         }
 
-        if (mStickyHeader != null) {
+        if (currentStickyHeader != null) {
             scrapStickyHeader(recycler)
         }
     }
@@ -413,7 +395,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         val stickyHeader = recycler.getViewForPosition(position)
 
         // Setup sticky header if the adapter requires it.
-        val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(position)
+        val adapterPositionPair = adapter!!.offsetPositionOnAdapter(position)
         if (adapterPositionPair.first is OnViewStickyListener) {
             (adapterPositionPair.first as OnViewStickyListener).setupStickyHeaderView(stickyHeader)
         }
@@ -426,8 +408,8 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         // Ignore sticky header, as it's fully managed by this LayoutManager.
         ignoreView(stickyHeader)
 
-        mStickyHeader = stickyHeader
-        mStickyHeaderPosition = position
+        currentStickyHeader = stickyHeader
+        currentStickyHeaderPosition = position
     }
 
     /**
@@ -435,19 +417,19 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
      */
     private fun bindStickyHeader(recycler: RecyclerView.Recycler, position: Int) {
         // Bind the sticky header.
-        recycler.bindViewToPosition(mStickyHeader!!, position)
-        mStickyHeaderPosition = position
-        measureAndLayout(mStickyHeader!!)
+        recycler.bindViewToPosition(currentStickyHeader!!, position)
+        currentStickyHeaderPosition = position
+        measureAndLayout(currentStickyHeader!!)
 
         // If we have a pending scroll wait until the end of layout and scroll again.
-        if (mPendingScrollPosition != RecyclerView.NO_POSITION) {
-            val vto = mStickyHeader!!.viewTreeObserver
+        if (pendingScrollPosition != RecyclerView.NO_POSITION) {
+            val vto = currentStickyHeader!!.viewTreeObserver
             vto.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
                 override fun onGlobalLayout() {
                     vto.removeOnGlobalLayoutListener(this)
 
-                    if (mPendingScrollPosition != RecyclerView.NO_POSITION) {
-                        scrollToPositionWithOffset(mPendingScrollPosition, mPendingScrollOffset)
+                    if (pendingScrollPosition != RecyclerView.NO_POSITION) {
+                        scrollToPositionWithOffset(pendingScrollPosition, pendingScrollOffset)
                         setPendingScroll(RecyclerView.NO_POSITION, INVALID_OFFSET)
                     }
                 }
@@ -474,17 +456,17 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
      * @param recycler If passed, the sticky header will be returned to the recycled view pool.
      */
     private fun scrapStickyHeader(recycler: RecyclerView.Recycler?) {
-        val stickyHeader = mStickyHeader
-        val stickyHeaderPosition = mStickyHeaderPosition
-        mStickyHeader = null
-        mStickyHeaderPosition = RecyclerView.NO_POSITION
+        val stickyHeader = currentStickyHeader
+        val stickyHeaderPosition = currentStickyHeaderPosition
+        currentStickyHeader = null
+        currentStickyHeaderPosition = RecyclerView.NO_POSITION
 
         // Revert translation values.
         stickyHeader!!.translationX = 0f
         stickyHeader.translationY = 0f
 
         // Teardown holder if the adapter requires it.
-        val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(stickyHeaderPosition)
+        val adapterPositionPair = adapter!!.offsetPositionOnAdapter(stickyHeaderPosition)
         if (adapterPositionPair.first is OnViewStickyListener) {
             (adapterPositionPair.first as OnViewStickyListener).teardownStickyHeaderView(stickyHeader)
         }
@@ -504,15 +486,15 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         if (!params.isItemRemoved && !params.isViewInvalid) {
             return if (orientation == VERTICAL) {
                 if (reverseLayout) {
-                    view.top + view.translationY <= height + mTranslationY
+                    view.top + view.translationY <= height + translationY
                 } else {
-                    view.bottom - view.translationY >= mTranslationY
+                    view.bottom - view.translationY >= translationY
                 }
             } else {
                 if (reverseLayout) {
-                    view.left + view.translationX <= width + mTranslationX
+                    view.left + view.translationX <= width + translationX
                 } else {
-                    view.right - view.translationX >= mTranslationX
+                    view.right - view.translationX >= translationX
                 }
             }
         } else {
@@ -526,15 +508,15 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
     private fun isViewOnBoundary(view: View): Boolean {
         return if (orientation == VERTICAL) {
             if (reverseLayout) {
-                view.bottom - view.translationY > height + mTranslationY
+                view.bottom - view.translationY > height + translationY
             } else {
-                view.top + view.translationY < mTranslationY
+                view.top + view.translationY < translationY
             }
         } else {
             if (reverseLayout) {
-                view.right - view.translationX > width + mTranslationX
+                view.right - view.translationX > width + translationX
             } else {
-                view.left + view.translationX < mTranslationX
+                view.left + view.translationX < translationX
             }
         }
     }
@@ -545,7 +527,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
      */
     private fun getY(headerView: View, nextHeaderView: View?): Float {
         if (orientation == VERTICAL) {
-            var y = mTranslationY
+            var y = translationY
             if (reverseLayout) {
                 y += (height - headerView.height).toFloat()
             }
@@ -558,7 +540,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
             }
             return y
         } else {
-            return mTranslationY
+            return translationY
         }
     }
 
@@ -568,7 +550,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
      */
     private fun getX(headerView: View, nextHeaderView: View?): Float {
         if (orientation != VERTICAL) {
-            var x = mTranslationX
+            var x = translationX
             if (reverseLayout) {
                 x += (width - headerView.width).toFloat()
             }
@@ -581,7 +563,7 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
             }
             return x
         } else {
-            return mTranslationX
+            return translationX
         }
     }
 
@@ -590,12 +572,12 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
      */
     private fun findHeaderIndex(position: Int): Int {
         var low = 0
-        var high = mHeaderPositions.size - 1
+        var high = headerPositions.size - 1
         while (low <= high) {
             val middle = (low + high) / 2
-            if (mHeaderPositions[middle]!! > position) {
+            if (headerPositions[middle] > position) {
                 high = middle - 1
-            } else if (mHeaderPositions[middle]!! < position) {
+            } else if (headerPositions[middle] < position) {
                 low = middle + 1
             } else {
                 return middle
@@ -609,12 +591,12 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
      */
     private fun findHeaderIndexOrBefore(position: Int): Int {
         var low = 0
-        var high = mHeaderPositions.size - 1
+        var high = headerPositions.size - 1
         while (low <= high) {
             val middle = (low + high) / 2
-            if (mHeaderPositions[middle]!! > position) {
+            if (headerPositions[middle] > position) {
                 high = middle - 1
-            } else if (middle < mHeaderPositions.size - 1 && mHeaderPositions[middle + 1]!! <= position) {
+            } else if (middle < headerPositions.size - 1 && headerPositions[middle + 1] <= position) {
                 low = middle + 1
             } else {
                 return middle
@@ -628,12 +610,12 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
      */
     private fun findHeaderIndexOrNext(position: Int): Int {
         var low = 0
-        var high = mHeaderPositions.size - 1
+        var high = headerPositions.size - 1
         while (low <= high) {
             val middle = (low + high) / 2
-            if (middle > 0 && mHeaderPositions[middle - 1]!! >= position) {
+            if (middle > 0 && headerPositions[middle - 1] >= position) {
                 high = middle - 1
-            } else if (mHeaderPositions[middle]!! < position) {
+            } else if (headerPositions[middle] < position) {
                 low = middle + 1
             } else {
                 return middle
@@ -643,8 +625,8 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
     }
 
     private fun setPendingScroll(position: Int, offset: Int) {
-        mPendingScrollPosition = position
-        mPendingScrollOffset = offset
+        pendingScrollPosition = position
+        pendingScrollOffset = offset
     }
 
     /**
@@ -656,67 +638,76 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
     private inner class HeaderPositionsAdapterDataObserver : AdapterDataObserver() {
         override fun onChanged() {
             // There's no hint at what changed, so go through the adapter.
-            mHeaderPositions.clear()
-            val itemCount = mAdapter!!.itemCount
-            for (i in 0..<itemCount) {
-                val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(i)
-                if (stickyHeaderProvider!!.isStickyHeader(adapterPositionPair.first, adapterPositionPair.second!!)) {
-                    mHeaderPositions.add(i)
+            headerPositions.clear()
+            val adapter = adapter
+            val stickyHeaderProvider = stickyHeaderProvider
+            if (adapter != null && stickyHeaderProvider != null) {
+                // Find all sticky headers.
+                val itemCount = adapter.itemCount
+                for (i in 0..<itemCount) {
+                    val (adapter, position) = adapter.offsetPositionOnAdapter(i)
+                    if (stickyHeaderProvider.isStickyHeader(adapter, position)) {
+                        headerPositions.add(i)
+                    }
                 }
             }
 
             // Remove sticky header immediately if the entry it represents has been removed. A layout will follow.
-            if (mStickyHeader != null && !mHeaderPositions.contains(mStickyHeaderPosition)) {
+            if (currentStickyHeader != null && !headerPositions.contains(currentStickyHeaderPosition)) {
                 scrapStickyHeader(null)
             }
         }
 
         override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
             // Shift headers below down.
-            val headerCount = mHeaderPositions.size
+            val headerCount = headerPositions.size
             if (headerCount > 0) {
                 var i = findHeaderIndexOrNext(positionStart)
                 while (i != -1 && i < headerCount) {
-                    mHeaderPositions[i] = mHeaderPositions[i]!! + itemCount
+                    headerPositions[i] = headerPositions[i] + itemCount
                     i++
                 }
             }
 
             // Add new headers.
-            for (i in positionStart..<positionStart + itemCount) {
-                val adapterPositionPair = mAdapter!!.offsetPositionOnAdapter(i)
-                if (stickyHeaderProvider!!.isStickyHeader(adapterPositionPair.first, adapterPositionPair.second!!)) {
-                    val headerIndex = findHeaderIndexOrNext(i)
-                    if (headerIndex != -1) {
-                        mHeaderPositions.add(headerIndex, i)
-                    } else {
-                        mHeaderPositions.add(i)
+            val adapter = adapter
+            val stickyHeaderProvider = stickyHeaderProvider
+            if (adapter != null && stickyHeaderProvider != null) {
+                for (i in positionStart..<positionStart + itemCount) {
+                    val (adapter, position) = adapter.offsetPositionOnAdapter(i)
+                    if (stickyHeaderProvider.isStickyHeader(adapter, position)) {
+                        val headerIndex = findHeaderIndexOrNext(i)
+                        if (headerIndex != -1) {
+                            headerPositions.add(headerIndex, i)
+                        } else {
+                            headerPositions.add(i)
+                        }
                     }
                 }
             }
         }
 
         override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-            var headerCount = mHeaderPositions.size
+            var headerCount = headerPositions.size
             if (headerCount > 0) {
                 // Remove headers.
                 for (i in positionStart + itemCount - 1 downTo positionStart) {
                     val index = findHeaderIndex(i)
                     if (index != -1) {
-                        mHeaderPositions.removeAt(index)
+                        headerPositions.removeAt(index)
                         headerCount--
                     }
                 }
 
                 // Remove sticky header immediately if the entry it represents has been removed. A layout will follow.
-                if (mStickyHeader != null && !mHeaderPositions.contains(mStickyHeaderPosition)) {
+                if (currentStickyHeader != null && !headerPositions.contains(currentStickyHeaderPosition)) {
                     scrapStickyHeader(null)
                 }
 
                 // Shift headers below up.
                 var i = findHeaderIndexOrNext(positionStart + itemCount)
                 while (i != -1 && i < headerCount) {
-                    mHeaderPositions[i] = mHeaderPositions[i]!! - itemCount
+                    headerPositions[i] = headerPositions[i] - itemCount
                     i++
                 }
             }
@@ -725,17 +716,17 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
             // Shift moved headers by toPosition - fromPosition.
             // Shift headers in-between by -itemCount (reverse if upwards).
-            val headerCount = mHeaderPositions.size
+            val headerCount = headerPositions.size
             if (headerCount > 0) {
                 if (fromPosition < toPosition) {
                     var i = findHeaderIndexOrNext(fromPosition)
                     while (i != -1 && i < headerCount) {
-                        val headerPos = mHeaderPositions[i]!!
+                        val headerPos = headerPositions[i]
                         if (headerPos >= fromPosition && headerPos < fromPosition + itemCount) {
-                            mHeaderPositions[i] = headerPos - (toPosition - fromPosition)
+                            headerPositions[i] = headerPos - (toPosition - fromPosition)
                             sortHeaderAtIndex(i)
                         } else if (headerPos >= fromPosition + itemCount && headerPos <= toPosition) {
-                            mHeaderPositions[i] = headerPos - itemCount
+                            headerPositions[i] = headerPos - itemCount
                             sortHeaderAtIndex(i)
                         } else {
                             break
@@ -745,12 +736,12 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
                 } else {
                     var i = findHeaderIndexOrNext(toPosition)
                     while (i != -1 && i < headerCount) {
-                        val headerPos = mHeaderPositions[i]!!
+                        val headerPos = headerPositions[i]
                         if (headerPos >= fromPosition && headerPos < fromPosition + itemCount) {
-                            mHeaderPositions[i] = headerPos + (toPosition - fromPosition)
+                            headerPositions[i] = headerPos + (toPosition - fromPosition)
                             sortHeaderAtIndex(i)
                         } else if (headerPos >= toPosition && headerPos <= fromPosition) {
-                            mHeaderPositions[i] = headerPos + itemCount
+                            headerPositions[i] = headerPos + itemCount
                             sortHeaderAtIndex(i)
                         } else {
                             break
@@ -762,12 +753,12 @@ class StickyHeadersGridLayoutManager : OpenGridLayoutManager {
         }
 
         fun sortHeaderAtIndex(index: Int) {
-            val headerPos = mHeaderPositions.removeAt(index)!!
+            val headerPos = headerPositions.removeAt(index)
             val headerIndex = findHeaderIndexOrNext(headerPos)
             if (headerIndex != -1) {
-                mHeaderPositions.add(headerIndex, headerPos)
+                headerPositions.add(headerIndex, headerPos)
             } else {
-                mHeaderPositions.add(headerPos)
+                headerPositions.add(headerPos)
             }
         }
     }

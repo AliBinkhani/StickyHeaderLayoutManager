@@ -18,8 +18,23 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
 ) : OpenLinearLayoutManager(context, orientation, reverseLayout) {
     private var adapter: RecyclerView.Adapter<*>? = null
 
-    private var translationX = 0f
-    private var translationY = 0f
+    var translationX = 0f
+        /**
+         * Offsets the horizontal location of the sticky header relative to the its default position.
+         */
+        set(value) {
+            field = value
+            requestLayout()
+        }
+
+    var translationY = 0f
+        /**
+         * Offsets the vertical location of the sticky header relative to the its default position.
+         */
+        set(value) {
+            field = value
+            requestLayout()
+        }
 
     // Header positions for the currently displayed list and their observer.
     private val headerPositions: MutableList<Int> = ArrayList(0)
@@ -43,27 +58,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
         return super.canScrollVertically() && scrollEnabled
     }
 
-    private var stickyHeaderProvider: StickyHeaderProvider? = null
-
-    fun setStickyHeaderProvider(stickyHeaderProvider: StickyHeaderProvider) {
-        this.stickyHeaderProvider = stickyHeaderProvider
-    }
-
-    /**
-     * Offsets the vertical location of the sticky header relative to the its default position.
-     */
-    fun setStickyHeaderTranslationY(translationY: Float) {
-        this.translationY = translationY
-        requestLayout()
-    }
-
-    /**
-     * Offsets the horizontal location of the sticky header relative to the its default position.
-     */
-    fun setStickyHeaderTranslationX(translationX: Float) {
-        this.translationX = translationX
-        requestLayout()
-    }
+    var stickyHeaderProvider: StickyHeaderProvider? = null
 
     /**
      * Returns true if `view` is the current sticky header.
@@ -83,10 +78,9 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     }
 
     private fun setAdapter(adapter: RecyclerView.Adapter<*>?) {
-        adapter?.unregisterAdapterDataObserver(headerPositionsObserver)
-
-        this@StickyHeadersLinearLayoutManager.adapter = adapter
-        adapter?.registerAdapterDataObserver(headerPositionsObserver)
+        this.adapter?.unregisterAdapterDataObserver(headerPositionsObserver)
+        this.adapter = adapter
+        this.adapter?.registerAdapterDataObserver(headerPositionsObserver)
         headerPositionsObserver.onChanged()
     }
 
@@ -640,11 +634,16 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
         override fun onChanged() {
             // There's no hint at what changed, so go through the adapter.
             headerPositions.clear()
-            val itemCount = adapter?.itemCount ?: 0
-            for (i in 0..<itemCount) {
-                val adapterPositionPair = adapter!!.offsetPositionOnAdapter(i)
-                if (stickyHeaderProvider!!.isStickyHeader(adapterPositionPair.first, adapterPositionPair.second!!)) {
-                    headerPositions.add(i)
+
+            val adapter = adapter
+            val stickyHeaderProvider = stickyHeaderProvider
+            if (adapter != null && stickyHeaderProvider != null) {
+                val itemCount = adapter.itemCount
+                for (i in 0..<itemCount) {
+                    val (adapter, position) = adapter.offsetPositionOnAdapter(i)
+                    if (stickyHeaderProvider.isStickyHeader(adapter, position)) {
+                        headerPositions.add(i)
+                    }
                 }
             }
 
@@ -666,14 +665,18 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
             }
 
             // Add new headers.
-            for (i in positionStart..<positionStart + itemCount) {
-                val adapterPositionPair = adapter!!.offsetPositionOnAdapter(i)
-                if (stickyHeaderProvider!!.isStickyHeader(adapterPositionPair.first, adapterPositionPair.second!!)) {
-                    val headerIndex = findHeaderIndexOrNext(i)
-                    if (headerIndex != -1) {
-                        headerPositions.add(headerIndex, i)
-                    } else {
-                        headerPositions.add(i)
+            val adapter = adapter
+            val stickyHeaderProvider = stickyHeaderProvider
+            if (adapter != null && stickyHeaderProvider != null) {
+                for (i in positionStart..<positionStart + itemCount) {
+                    val (adapter, position) = adapter.offsetPositionOnAdapter(i)
+                    if (stickyHeaderProvider.isStickyHeader(adapter, position)) {
+                        val headerIndex = findHeaderIndexOrNext(i)
+                        if (headerIndex != -1) {
+                            headerPositions.add(headerIndex, i)
+                        } else {
+                            headerPositions.add(i)
+                        }
                     }
                 }
             }

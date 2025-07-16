@@ -1,26 +1,25 @@
 package com.xq.stickylayoutmanager
 
-import android.util.Pair
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.RecyclerView
 import java.util.concurrent.atomic.AtomicInteger
 
 internal fun RecyclerView.Adapter<*>.offsetPositionOnAdapter(
     position: Int,
-): Pair<out RecyclerView.Adapter<*>, Int> {
+): Pair<RecyclerView.Adapter<*>, Int> {
     if (this is ConcatAdapter) {
         return this.offsetPositionOnConcatAdapter(position)
     }
-    return Pair(this, position)
+    return this to position
 }
 
-internal fun ConcatAdapter.offsetPositionOnConcatAdapter(position: Int): Pair<out RecyclerView.Adapter<*>, Int> {
-    for (entry in this.adapters.getAllAdapterStartPositionMap(AtomicInteger(0)).entries.reversed()) {
-        if (position + 1 > entry.value) {
-            return Pair(entry.key, position - entry.value)
+internal fun ConcatAdapter.offsetPositionOnConcatAdapter(position: Int): Pair<RecyclerView.Adapter<*>, Int> {
+    for ((key, value ) in this.adapters.getAllAdapterStartPositionMap(AtomicInteger(0)).entries.reversed()) {
+        if (position + 1 > value) {
+            return Pair(key, position - value)
         }
     }
-    return Pair<ConcatAdapter, Int>(this, position)
+    return this to position
 }
 
 internal fun List<RecyclerView.Adapter<*>>.getAllAdapterStartPositionMap(
