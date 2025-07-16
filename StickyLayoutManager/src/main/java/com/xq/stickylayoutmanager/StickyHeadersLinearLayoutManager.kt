@@ -14,9 +14,20 @@ import kotlin.math.min
 class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     context: Context,
     orientation: Int = RecyclerView.VERTICAL,
-    reverseLayout: Boolean = false
+    reverseLayout: Boolean = false,
 ) : OpenLinearLayoutManager(context, orientation, reverseLayout) {
+
+    constructor(
+        context: Context,
+        orientation: Int = RecyclerView.VERTICAL,
+        reverseLayout: Boolean = false,
+        stickyHeaderProvider: StickyHeaderProvider,
+    ): this(context, orientation, reverseLayout) {
+        this.stickyHeaderProvider = stickyHeaderProvider
+    }
+
     private var adapter: RecyclerView.Adapter<*>? = null
+    var stickyHeaderProvider: StickyHeaderProvider? = null
 
     var translationX = 0f
         /**
@@ -57,8 +68,6 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     override fun canScrollVertically(): Boolean {
         return super.canScrollVertically() && scrollEnabled
     }
-
-    var stickyHeaderProvider: StickyHeaderProvider? = null
 
     /**
      * Returns true if `view` is the current sticky header.
@@ -340,19 +349,24 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
                 if (headerPos != -1 && (headerPos != anchorPos || isViewOnBoundary(anchorView))
                     && nextHeaderPos != headerPos + 1
                 ) {
+                    var stickyHeader: View? = currentStickyHeader
+
                     // Ensure existing sticky header, if any, is of correct type.
-                    if (currentStickyHeader != null
-                        && getItemViewType(currentStickyHeader!!) != adapter?.getItemViewType(headerPos)
+                    if (stickyHeader != null
+                        && getItemViewType(stickyHeader) != adapter?.getItemViewType(headerPos)
                     ) {
                         // A sticky header was shown before but is not of the correct type. Scrap it.
                         scrapStickyHeader(recycler)
+                        stickyHeader = null
                     }
 
                     // Ensure sticky header is created, if absent, or bound, if being laid out or the position changed.
-                    if (currentStickyHeader == null) {
+                    if (stickyHeader == null) {
                         createStickyHeader(recycler, headerPos)
+                        stickyHeader = currentStickyHeader!!
                     }
-                    if (layout || getPosition(currentStickyHeader!!) != headerPos) {
+
+                    if (layout || getPosition(stickyHeader) != headerPos) {
                         bindStickyHeader(recycler, headerPos)
                     }
 
@@ -362,12 +376,12 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
                     if (nextHeaderPos != -1) {
                         nextHeaderView = getChildAt(anchorIndex + (nextHeaderPos - anchorPos))
                         // The header view itself is added to the RecyclerView. Discard it if it comes up.
-                        if (nextHeaderView === currentStickyHeader) {
+                        if (nextHeaderView === stickyHeader) {
                             nextHeaderView = null
                         }
                     }
-                    currentStickyHeader!!.translationX = getX(currentStickyHeader!!, nextHeaderView)
-                    currentStickyHeader!!.translationY = getY(currentStickyHeader!!, nextHeaderView)
+                    stickyHeader.translationX = getX(stickyHeader, nextHeaderView)
+                    stickyHeader.translationY = getY(stickyHeader, nextHeaderView)
 
                     // Hide the original header view if present
                     lastStickyHeaderOriginalView?.visibility = View.VISIBLE // Restore previous

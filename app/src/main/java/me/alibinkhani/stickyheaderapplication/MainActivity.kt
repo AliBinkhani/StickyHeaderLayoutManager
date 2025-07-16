@@ -29,8 +29,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupViews() = binding.apply {
-        val layoutManager = StickyHeadersLinearLayoutManager(this@MainActivity)
-        layoutManager.setStickyHeaderProvider { adapter, position ->
+        val layoutManager = StickyHeadersLinearLayoutManager(this@MainActivity) { adapter, position ->
             adapter is StickyHeaderAdapter && adapter.isStickyHeader(position)
         }
 
