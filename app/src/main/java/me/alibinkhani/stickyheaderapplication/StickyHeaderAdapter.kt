@@ -55,7 +55,7 @@ class StickyHeaderAdapter: RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         holder.itemView.setOnClickListener {
             this.toast?.cancel()
-            Toast.makeText(it.context, "Header clicked!", Toast.LENGTH_SHORT).apply {
+            Toast.makeText(it.context, "Header clicked! ${holder.bindingAdapterPosition}", Toast.LENGTH_SHORT).apply {
                 toast = this
                 show()
             }
