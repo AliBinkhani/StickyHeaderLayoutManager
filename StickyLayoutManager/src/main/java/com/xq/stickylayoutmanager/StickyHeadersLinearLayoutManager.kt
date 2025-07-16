@@ -385,7 +385,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
 
                     // Hide the original header view if present
                     lastStickyHeaderOriginalView?.visibility = View.VISIBLE // Restore previous
-                    if (getPosition(anchorView) == headerPos && !isStickyHeader(anchorView)) {
+                    if (getPosition(anchorView) == headerPos) {
                         anchorView.visibility = View.INVISIBLE
                         lastStickyHeaderOriginalView = anchorView
                     }
