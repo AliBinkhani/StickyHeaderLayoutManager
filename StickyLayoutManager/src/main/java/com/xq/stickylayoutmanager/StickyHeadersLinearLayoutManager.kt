@@ -28,6 +28,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     // Sticky header's ViewHolder and dirty state.
     private var mStickyHeader: View? = null
     private var mStickyHeaderPosition = RecyclerView.NO_POSITION
+    private var lastStickyHeaderOriginalView: View? = null
 
     private var pendingScrollPosition = RecyclerView.NO_POSITION
     private var pendingScrollOffset = 0
@@ -377,6 +378,13 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
                     }
                     mStickyHeader!!.translationX = getX(mStickyHeader!!, nextHeaderView)
                     mStickyHeader!!.translationY = getY(mStickyHeader!!, nextHeaderView)
+
+                    // Hide the original header view if present
+                    lastStickyHeaderOriginalView?.visibility = View.VISIBLE // Restore previous
+                    if (getPosition(anchorView) == headerPos && !isStickyHeader(anchorView)) {
+                        anchorView.visibility = View.INVISIBLE
+                        lastStickyHeaderOriginalView = anchorView
+                    }
                     return
                 }
             }
@@ -384,6 +392,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
 
         if (mStickyHeader != null) {
             scrapStickyHeader(recycler)
+            lastStickyHeaderOriginalView?.visibility = View.VISIBLE
         }
     }
 
