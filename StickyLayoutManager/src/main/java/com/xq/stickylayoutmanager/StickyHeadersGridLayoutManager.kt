@@ -534,19 +534,17 @@ class StickyHeadersGridLayoutManager @JvmOverloads constructor(
         if (orientation != VERTICAL)
             return translationY
 
-        return if (reverseLayout) {
+        if (reverseLayout) {
             val y = translationY + (height - headerView.height)
-            if (nextHeaderView != null) {
-                max(nextHeaderView.bottom.toFloat(), y)
-            } else {
-                y
-            }
+            if (nextHeaderView == null)
+                return y
+
+            return max(nextHeaderView.bottom.toFloat(), y)
         } else {
-            if (nextHeaderView != null) {
-                min((nextHeaderView.top - headerView.height).toFloat(), translationY)
-            } else {
-                translationY
-            }
+            if (nextHeaderView == null)
+                return translationY
+
+            return min((nextHeaderView.top - headerView.height).toFloat(), translationY)
         }
     }
 
@@ -558,19 +556,18 @@ class StickyHeadersGridLayoutManager @JvmOverloads constructor(
         if (orientation != HORIZONTAL)
             return translationX
 
-        return if (reverseLayout) {
+        if (reverseLayout) {
             val x = translationX + (width - headerView.width)
-            if (nextHeaderView != null) {
-                max(nextHeaderView.right.toFloat(), x)
-            } else {
-                x
-            }
+            if (nextHeaderView == null)
+                return x
+
+            return max(nextHeaderView.right.toFloat(), x)
+
         } else {
-            if (nextHeaderView != null) {
-                min((nextHeaderView.left - headerView.width).toFloat(), translationX)
-            } else {
-                translationX
-            }
+            if (nextHeaderView == null)
+                return translationX
+
+            return min((nextHeaderView.left - headerView.width).toFloat(), translationX)
         }
     }
 
