@@ -18,7 +18,7 @@ class StickyHeaderAdapter: RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var toast: Toast? = null
 
     override fun getItemViewType(position: Int): Int {
-        return if (position % 5 == 0) TYPE_STICKY_HEADER else TYPE_ITEM
+        return if (position % 10 == 0) TYPE_STICKY_HEADER else TYPE_ITEM
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -37,7 +37,7 @@ class StickyHeaderAdapter: RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        val headPos = position / 5
+        val headPos = position / 10
 
         when (holder) {
             is ItemViewHolder -> onBindViewHolder(holder, position - headPos)
