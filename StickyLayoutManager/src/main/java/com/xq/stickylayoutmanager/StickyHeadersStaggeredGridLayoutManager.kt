@@ -6,6 +6,7 @@ import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.View
 import android.view.ViewTreeObserver
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.AdapterDataObserver
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
@@ -471,21 +472,22 @@ class StickyHeadersStaggeredGridLayoutManager : StaggeredGridLayoutManager {
      * [android.R.attr.clipToPadding].
      */
     private fun getY(headerView: View, nextHeaderView: View?): Float {
-        if (orientation == VERTICAL) {
-            var y = translationY
-            if (reverseLayout) {
-                y += (height - headerView.height).toFloat()
-            }
-            if (nextHeaderView != null) {
-                y = if (reverseLayout) {
-                    max(nextHeaderView.bottom.toFloat(), y)
-                } else {
-                    min((nextHeaderView.top - headerView.height).toFloat(), y)
-                }
-            }
-            return y
-        } else {
+        if (orientation != LinearLayoutManager.VERTICAL)
             return translationY
+
+        return if (reverseLayout) {
+            val y = translationY + (height - headerView.height)
+            if (nextHeaderView != null) {
+                max(nextHeaderView.bottom.toFloat(), y)
+            } else {
+                y
+            }
+        } else {
+            if (nextHeaderView != null) {
+                min((nextHeaderView.top - headerView.height).toFloat(), translationY)
+            } else {
+                translationY
+            }
         }
     }
 
@@ -494,21 +496,22 @@ class StickyHeadersStaggeredGridLayoutManager : StaggeredGridLayoutManager {
      * [android.R.attr.clipToPadding].
      */
     private fun getX(headerView: View, nextHeaderView: View?): Float {
-        if (orientation != VERTICAL) {
-            var x = translationX
-            if (reverseLayout) {
-                x += (width - headerView.width).toFloat()
-            }
-            if (nextHeaderView != null) {
-                x = if (reverseLayout) {
-                    max(nextHeaderView.right.toFloat(), x)
-                } else {
-                    min((nextHeaderView.left - headerView.width).toFloat(), x)
-                }
-            }
-            return x
-        } else {
+        if (orientation != LinearLayoutManager.HORIZONTAL)
             return translationX
+
+        return if (reverseLayout) {
+            val x = translationX + (width - headerView.width)
+            if (nextHeaderView != null) {
+                max(nextHeaderView.right.toFloat(), x)
+            } else {
+                x
+            }
+        } else {
+            if (nextHeaderView != null) {
+                min((nextHeaderView.left - headerView.width).toFloat(), translationX)
+            } else {
+                translationX
+            }
         }
     }
 
