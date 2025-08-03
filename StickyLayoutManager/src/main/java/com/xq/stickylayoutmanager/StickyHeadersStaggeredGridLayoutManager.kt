@@ -245,14 +245,16 @@ class StickyHeadersStaggeredGridLayoutManager : StaggeredGridLayoutManager {
     }
 
     private fun detachStickyHeader() {
-        if (currentStickyHeader != null) {
-            detachView(currentStickyHeader!!)
+        val stickyHeader: View? = currentStickyHeader
+        if (stickyHeader != null) {
+            detachView(stickyHeader)
         }
     }
 
     private fun attachStickyHeader() {
-        if (currentStickyHeader != null) {
-            attachView(currentStickyHeader!!)
+        val stickyHeader: View? = currentStickyHeader
+        if (stickyHeader != null) {
+            attachView(stickyHeader)
         }
     }
 
@@ -279,8 +281,8 @@ class StickyHeadersStaggeredGridLayoutManager : StaggeredGridLayoutManager {
             }
             if (anchorView != null && anchorPos != -1) {
                 val headerIndex = findHeaderIndexOrBefore(anchorPos)
-                val headerPos = (if (headerIndex != -1) headerPositions[headerIndex] else -1)
-                val nextHeaderPos = (if (headerCount > headerIndex + 1) headerPositions[headerIndex + 1] else -1)
+                val headerPos = if (headerIndex != -1) headerPositions[headerIndex] else -1
+                val nextHeaderPos = if (headerCount > headerIndex + 1) headerPositions[headerIndex + 1] else -1
 
                 // Show sticky header if:
                 // - There's one to show;
@@ -289,20 +291,23 @@ class StickyHeadersStaggeredGridLayoutManager : StaggeredGridLayoutManager {
                 if (headerPos != -1 && (headerPos != anchorPos || isViewOnBoundary(anchorView))
                     && nextHeaderPos != headerPos + 1
                 ) {
+                    var stickyHeader: View? = currentStickyHeader
+
                     // Ensure existing sticky header, if any, is of correct type.
-                    if (currentStickyHeader != null
-                        && getItemViewType(currentStickyHeader!!) != adapter!!.getItemViewType(headerPos)
+                    if (stickyHeader != null
+                        && getItemViewType(stickyHeader) != adapter!!.getItemViewType(headerPos)
                     ) {
                         // A sticky header was shown before but is not of the correct type. Scrap it.
                         scrapStickyHeader(recycler)
                     }
 
                     // Ensure sticky header is created, if absent, or bound, if being laid out or the position changed.
-                    if (currentStickyHeader == null) {
+                    if (stickyHeader == null) {
                         createStickyHeader(recycler, headerPos)
+                        stickyHeader = currentStickyHeader!!
                     }
-                    if (layout || getPosition(currentStickyHeader!!) != headerPos) {
-                        bindStickyHeader(recycler, headerPos)
+                    if (layout || getPosition(stickyHeader) != headerPos) {
+                        bindStickyHeader(recycler, headerPos, stickyHeader)
                     }
 
                     // Draw the sticky header using translation values which depend on orientation, direction and
@@ -311,12 +316,12 @@ class StickyHeadersStaggeredGridLayoutManager : StaggeredGridLayoutManager {
                     if (nextHeaderPos != -1) {
                         nextHeaderView = getChildAt(anchorIndex + (nextHeaderPos - anchorPos))
                         // The header view itself is added to the RecyclerView. Discard it if it comes up.
-                        if (nextHeaderView === currentStickyHeader) {
+                        if (nextHeaderView === stickyHeader) {
                             nextHeaderView = null
                         }
                     }
-                    currentStickyHeader!!.translationX = getX(currentStickyHeader!!, nextHeaderView)
-                    currentStickyHeader!!.translationY = getY(currentStickyHeader!!, nextHeaderView)
+                    stickyHeader.translationX = getX(stickyHeader, nextHeaderView)
+                    stickyHeader.translationY = getY(stickyHeader, nextHeaderView)
                     return
                 }
             }
@@ -355,15 +360,15 @@ class StickyHeadersStaggeredGridLayoutManager : StaggeredGridLayoutManager {
     /**
      * Binds the [.mStickyHeader] for the given `position`.
      */
-    private fun bindStickyHeader(recycler: RecyclerView.Recycler, position: Int) {
+    private fun bindStickyHeader(recycler: RecyclerView.Recycler, position: Int, stickyHeader: View) {
         // Bind the sticky header.
-        recycler.bindViewToPosition(currentStickyHeader!!, position)
+        recycler.bindViewToPosition(stickyHeader, position)
         currentStickyHeaderPosition = position
-        measureAndLayout(currentStickyHeader!!)
+        measureAndLayout(stickyHeader)
 
         // If we have a pending scroll wait until the end of layout and scroll again.
         if (pendingScrollPosition != RecyclerView.NO_POSITION) {
-            val vto = currentStickyHeader!!.viewTreeObserver
+            val vto = stickyHeader.viewTreeObserver
             vto.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
                 override fun onGlobalLayout() {
                     vto.removeOnGlobalLayoutListener(this)

@@ -309,11 +309,17 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     }
 
     private fun detachStickyHeader() {
-        currentStickyHeader?.let { detachView(it) }
+        val stickyHeader: View? = currentStickyHeader
+        if (stickyHeader != null) {
+            detachView(stickyHeader)
+        }
     }
 
     private fun attachStickyHeader() {
-        currentStickyHeader?.let { attachView(it) }
+        val stickyHeader: View? = currentStickyHeader
+        if (stickyHeader != null) {
+            attachView(stickyHeader)
+        }
     }
 
     /**
@@ -339,8 +345,8 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
             }
             if (anchorView != null && anchorPos != -1) {
                 val headerIndex = findHeaderIndexOrBefore(anchorPos)
-                val headerPos = (if (headerIndex != -1) headerPositions[headerIndex] else -1)
-                val nextHeaderPos = (if (headerCount > headerIndex + 1) headerPositions[headerIndex + 1] else -1)
+                val headerPos = if (headerIndex != -1) headerPositions[headerIndex] else -1
+                val nextHeaderPos = if (headerCount > headerIndex + 1) headerPositions[headerIndex + 1] else -1
 
                 // Show sticky header if:
                 // - There's one to show;
@@ -367,7 +373,7 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
                     }
 
                     if (layout || getPosition(stickyHeader) != headerPos) {
-                        bindStickyHeader(recycler, headerPos)
+                        bindStickyHeader(recycler, headerPos, stickyHeader)
                     }
 
                     // Draw the sticky header using translation values which depend on orientation, direction and
@@ -426,15 +432,15 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     /**
      * Binds the [.mStickyHeader] for the given `position`.
      */
-    private fun bindStickyHeader(recycler: RecyclerView.Recycler, position: Int) {
+    private fun bindStickyHeader(recycler: RecyclerView.Recycler, position: Int, stickyHeader: View) {
         // Bind the sticky header.
-        recycler.bindViewToPosition(currentStickyHeader!!, position)
+        recycler.bindViewToPosition(stickyHeader, position)
         currentStickyHeaderPosition = position
-        measureAndLayout(currentStickyHeader!!)
+        measureAndLayout(stickyHeader)
 
         // If we have a pending scroll wait until the end of layout and scroll again.
         if (pendingScrollPosition != RecyclerView.NO_POSITION) {
-            val vto = currentStickyHeader!!.viewTreeObserver
+            val vto = stickyHeader.viewTreeObserver
             vto.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
                 override fun onGlobalLayout() {
                     vto.removeOnGlobalLayoutListener(this)
