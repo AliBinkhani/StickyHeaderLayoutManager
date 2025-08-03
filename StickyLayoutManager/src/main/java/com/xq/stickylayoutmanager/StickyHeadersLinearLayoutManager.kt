@@ -15,33 +15,44 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     context: Context,
     orientation: Int = RecyclerView.VERTICAL,
     reverseLayout: Boolean = false,
+    stickReverse: Boolean = reverseLayout,
 ) : OpenLinearLayoutManager(context, orientation, reverseLayout) {
 
     constructor(
         context: Context,
         orientation: Int = RecyclerView.VERTICAL,
         reverseLayout: Boolean = false,
+        stickReverse: Boolean = reverseLayout,
         stickyHeaderProvider: StickyHeaderProvider,
-    ): this(context, orientation, reverseLayout) {
+    ): this(context, orientation, reverseLayout, stickReverse) {
         this.stickyHeaderProvider = stickyHeaderProvider
     }
 
     private var adapter: RecyclerView.Adapter<*>? = null
     var stickyHeaderProvider: StickyHeaderProvider? = null
 
-    var translationX = 0f
-        /**
-         * Offsets the horizontal location of the sticky header relative to the its default position.
-         */
+    /**
+     * If true, the sticky header will be positioned at the bottom of the list, otherwise at the top.
+     */
+    var stickReverse: Boolean = stickReverse
         set(value) {
             field = value
             requestLayout()
         }
 
+    /**
+     * Offsets the horizontal location of the sticky header relative to the its default position.
+     */
+    var translationX = 0f
+        set(value) {
+            field = value
+            requestLayout()
+        }
+
+    /**
+     * Offsets the vertical location of the sticky header relative to the its default position.
+     */
     var translationY = 0f
-        /**
-         * Offsets the vertical location of the sticky header relative to the its default position.
-         */
         set(value) {
             field = value
             requestLayout()
@@ -333,7 +344,15 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
             var anchorView: View? = null
             var anchorIndex = -1
             var anchorPos = -1
-            for (i in 0..<childCount) {
+
+            // TRUE if exactly one of them is true, FALSE if both are same
+            val isReversed = reverseLayout xor stickReverse
+            val indices = if (isReversed)
+                IntProgression.fromClosedRange(childCount - 1, 0, -1)
+            else
+                IntProgression.fromClosedRange(0, childCount - 1, 1)
+
+            for (i in indices) {
                 val child = getChildAt(i)
                 val params = child!!.layoutParams as RecyclerView.LayoutParams
                 if (!isStickyHeader(child) && isViewValidAnchor(child, params)) {
@@ -343,10 +362,19 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
                     break
                 }
             }
+
             if (anchorView != null && anchorPos != -1) {
-                val headerIndex = findHeaderIndexOrBefore(anchorPos)
-                val headerPos = if (headerIndex != -1) headerPositions[headerIndex] else -1
-                val nextHeaderPos = if (headerCount > headerIndex + 1) headerPositions[headerIndex + 1] else -1
+                val headerPos: Int
+                val nextHeaderPos: Int
+                if (isReversed) {
+                    val headerIndex = findHeaderIndexOrNext(anchorPos)
+                    headerPos = if (headerIndex != -1) headerPositions[headerIndex] else -1
+                    nextHeaderPos = headerPositions.getOrNull(headerIndex - 1) ?: -1
+                } else {
+                    val headerIndex = findHeaderIndexOrBefore(anchorPos)
+                    headerPos = if (headerIndex != -1) headerPositions[headerIndex] else -1
+                    nextHeaderPos = headerPositions.getOrNull(headerIndex + 1) ?: -1
+                }
 
                 // Show sticky header if:
                 // - There's one to show;
@@ -522,13 +550,13 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
      */
     private fun isViewOnBoundary(view: View): Boolean {
         return if (orientation == VERTICAL) {
-            if (reverseLayout) {
+            if (stickReverse) {
                 view.bottom - view.translationY > height + translationY
             } else {
                 view.top + view.translationY < translationY
             }
         } else {
-            if (reverseLayout) {
+            if (stickReverse) {
                 view.right - view.translationX > width + translationX
             } else {
                 view.left + view.translationX < translationX
@@ -543,11 +571,11 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     private fun getY(headerView: View, nextHeaderView: View?): Float {
         if (orientation == VERTICAL) {
             var y = translationY
-            if (reverseLayout) {
+            if (stickReverse) {
                 y += (height - headerView.height).toFloat()
             }
             if (nextHeaderView != null) {
-                y = if (reverseLayout) {
+                y = if (stickReverse) {
                     max(nextHeaderView.bottom.toFloat(), y)
                 } else {
                     min((nextHeaderView.top - headerView.height).toFloat(), y)
@@ -566,11 +594,11 @@ class StickyHeadersLinearLayoutManager @JvmOverloads constructor(
     private fun getX(headerView: View, nextHeaderView: View?): Float {
         if (orientation != VERTICAL) {
             var x = translationX
-            if (reverseLayout) {
+            if (stickReverse) {
                 x += (width - headerView.width).toFloat()
             }
             if (nextHeaderView != null) {
-                x = if (reverseLayout) {
+                x = if (stickReverse) {
                     max(nextHeaderView.right.toFloat(), x)
                 } else {
                     min((nextHeaderView.left - headerView.width).toFloat(), x)
